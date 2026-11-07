@@ -1,0 +1,8 @@
+com.yarkey.clip-pngs-0 /Users/bytedance/Documents/sourcecode/model_clip/Android/core/clip/build/generated/res/pngs/debug
+com.yarkey.clip-updated_navigation_xml-1 /Users/bytedance/Documents/sourcecode/model_clip/Android/core/clip/build/generated/updated_navigation_xml/debug
+com.yarkey.clip-mergeDebugResources-2 /Users/bytedance/Documents/sourcecode/model_clip/Android/core/clip/build/intermediates/incremental/debug/mergeDebugResources/merged.dir
+com.yarkey.clip-mergeDebugResources-3 /Users/bytedance/Documents/sourcecode/model_clip/Android/core/clip/build/intermediates/incremental/debug/mergeDebugResources/stripped.dir
+com.yarkey.clip-debug-4 /Users/bytedance/Documents/sourcecode/model_clip/Android/core/clip/build/intermediates/merged_res/debug/mergeDebugResources
+com.yarkey.clip-debug-5 /Users/bytedance/Documents/sourcecode/model_clip/Android/core/clip/build/intermediates/packaged_res/debug/packageDebugResources
+com.yarkey.clip-debug-6 /Users/bytedance/Documents/sourcecode/model_clip/Android/core/clip/src/debug/res
+com.yarkey.clip-main-7 /Users/bytedance/Documents/sourcecode/model_clip/Android/core/clip/src/main/res

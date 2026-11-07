@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.yarkey.gallery.presentation.GalleryViewModelTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-11-06T06:01:45.266Z" hostname="Y12YWFX2QQ" time="0.614">
+  <properties/>
+  <testcase name="loadFailureExposesRetryableError" classname="com.yarkey.gallery.presentation.GalleryViewModelTest" time="0.565"/>
+  <testcase name="successfulIndexEnablesTextSearch" classname="com.yarkey.gallery.presentation.GalleryViewModelTest" time="0.024"/>
+  <testcase name="grantingAccessLoadsImagesAndVideos" classname="com.yarkey.gallery.presentation.GalleryViewModelTest" time="0.01"/>
+  <testcase name="denyingAccessClearsPreviouslyLoadedMedia" classname="com.yarkey.gallery.presentation.GalleryViewModelTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

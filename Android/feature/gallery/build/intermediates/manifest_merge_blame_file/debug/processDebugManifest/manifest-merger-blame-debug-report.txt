@@ -1,0 +1,25 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.yarkey.gallery" >
+4
+5    <uses-sdk android:minSdkVersion="24" />
+5-->INJECTED
+5-->INJECTED
+6
+7    <uses-permission
+7-->/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/AndroidManifest.xml:4:5-6:38
+8        android:name="android.permission.READ_EXTERNAL_STORAGE"
+8-->/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/AndroidManifest.xml:5:9-64
+9        android:maxSdkVersion="32" />
+9-->/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/AndroidManifest.xml:6:9-35
+10    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+10-->/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/AndroidManifest.xml:7:5-76
+10-->/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/AndroidManifest.xml:7:22-73
+11    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+11-->/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/AndroidManifest.xml:8:5-75
+11-->/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/AndroidManifest.xml:8:22-72
+12    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+12-->/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/AndroidManifest.xml:9:5-90
+12-->/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/AndroidManifest.xml:9:22-87
+13
+14</manifest>

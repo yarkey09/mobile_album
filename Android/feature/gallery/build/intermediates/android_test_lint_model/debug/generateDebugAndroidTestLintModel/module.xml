@@ -1,0 +1,20 @@
+<lint-module
+    format="1"
+    dir="/Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery"
+    name=":feature:gallery"
+    type="LIBRARY"
+    maven="ChineseClip.feature:gallery:unspecified"
+    agpVersion="9.1.1"
+    buildFolder="build"
+    bootClassPath="/Users/bytedance/Library/Android/sdk/platforms/android-37.0/android.jar:/Users/bytedance/Library/Android/sdk/build-tools/36.0.0/core-lambda-stubs.jar"
+    javaSourceLevel="11"
+    compileTarget="android-37.0"
+    neverShrinking="true"
+    highlightGradualR8Api="false">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="debug"/>
+</lint-module>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 9.1.1" type="conditional_incidents">
+
+    <incident
+        id="ScopedStorage"
+        severity="warning"
+        message="">
+        <location
+            file="${:feature:gallery*debug*MAIN*sourceProvider*0*manifest*0}"
+            line="5"
+            column="23"
+            startOffset="153"
+            endLine="5"
+            endColumn="63"
+            endOffset="193"/>
+        <map>
+            <entry
+                name="maxSdkVersion"
+                int="32"/>
+            <entry
+                name="read"
+                boolean="true"/>
+        </map>
+    </incident>
+
+    <incident
+        id="InlinedApi"
+        severity="warning"
+        message="">
+        <fix-data minSdk="24-∞" requiresApi="29-∞"/>
+        <location
+            file="${:feature:gallery*debug*MAIN*sourceProvider*0*javaDir*0}/com/yarkey/gallery/data/MediaStoreGalleryRepository.kt"
+            line="19"
+            column="57"
+            startOffset="755"
+            endLine="19"
+            endColumn="83"
+            endOffset="781"/>
+        <map>
+            <entry
+                name="message"
+                string="Field requires API level 29 (current min is %1$s): `android.provider.MediaStore#VOLUME_EXTERNAL`"/>
+            <api-levels id="minSdk"
+                value="24-∞"/>
+            <entry
+                name="name"
+                string="VOLUME_EXTERNAL"/>
+            <entry
+                name="owner"
+                string="android.provider.MediaStore"/>
+            <api-levels id="requiresApi"
+                value="29-∞"/>
+        </map>
+    </incident>
+
+</incidents>
