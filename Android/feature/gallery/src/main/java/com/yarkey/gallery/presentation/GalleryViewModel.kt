@@ -39,6 +39,7 @@ class GalleryViewModel(
     private var loadJob: Job? = null
     private var indexJob: Job? = null
     private var searchJob: Job? = null
+    private var databaseJob: Job? = null
 
     /** 权限被撤销时立即清空受保护媒体；访问模式发生变化后重新加载相册。 */
     fun onAccessModeChanged(accessMode: GalleryAccessMode) {
@@ -224,6 +225,36 @@ class GalleryViewModel(
                     it.copy(
                         selectedModelId = clipSearchEngine.selectedModelId,
                         clipModelState = ClipModelState.FAILED,
+                    )
+                }
+            }
+        }
+    }
+
+    fun loadEmbeddingDatabase() {
+        databaseJob?.cancel()
+        databaseJob = viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isEmbeddingDatabaseLoading = true,
+                    embeddingDatabaseLoadFailed = false,
+                )
+            }
+            try {
+                val records = clipSearchEngine.inspectStoredEmbeddings()
+                _uiState.update {
+                    it.copy(
+                        embeddingRecords = records,
+                        isEmbeddingDatabaseLoading = false,
+                    )
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
+                _uiState.update {
+                    it.copy(
+                        isEmbeddingDatabaseLoading = false,
+                        embeddingDatabaseLoadFailed = true,
                     )
                 }
             }

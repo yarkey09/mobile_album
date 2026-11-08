@@ -25,13 +25,24 @@ internal object ClipModelCatalog {
             model = ClipModel(
                 id = "chinese-clip-rn50-fp32-v1",
                 displayName = "Chinese-CLIP RN50",
-                description = "FP32 · 224 × 224",
+                description = "FP32 · 224 × 224 · 1024 维",
             ),
             imageModelAsset = "models/rn50.img.fp32.onnx",
             textModelAsset = "models/rn50.txt.fp32.onnx",
             imageInputName = "image",
             textInputName = "text",
-        )
+        ),
+        ClipModelDefinition(
+            model = ClipModel(
+                id = "chinese-clip-vit-b-16-fp32-v1",
+                displayName = "Chinese-CLIP ViT-B/16",
+                description = "FP32 · 224 × 224 · 512 维",
+            ),
+            imageModelAsset = "models/vit-b-16.img.fp32.onnx",
+            textModelAsset = "models/vit-b-16.txt.fp32.onnx",
+            imageInputName = "image",
+            textInputName = "text",
+        ),
     )
 
     fun definition(modelId: String): ClipModelDefinition? =

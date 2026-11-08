@@ -10,7 +10,7 @@ import android.net.Uri
 import kotlin.math.max
 
 /**
- * 将 Android 图片转换为 Chinese-CLIP RN50 所需的 NCHW 浮点张量。
+ * 将 Android 图片转换为 Chinese-CLIP 所需的 NCHW 浮点张量。
  */
 internal class ClipImageProcessor(
     private val contentResolver: ContentResolver,
@@ -112,7 +112,7 @@ internal class ClipImageProcessor(
 
         // MEAN = 均值（Mean）
         // STD = 标准差（Standard Deviation）
-        // 这组具体数值来自 Chinese-CLIP（及原始 OpenAI CLIP）RN50 模型的训练预处理配置，
+        // 这组具体数值来自 Chinese-CLIP（及原始 OpenAI CLIP）模型的训练预处理配置，
         // 与 PyTorch 中 transforms.Normalize(mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711]) 完全一致
         private const val RED_MEAN = 0.48145466f
         private const val GREEN_MEAN = 0.4578275f

@@ -68,12 +68,15 @@ interface ClipSearchEngine : AutoCloseable {
     /** 最多返回 [limit] 条结果，并按相似度从高到低排序。 */
     suspend fun search(query: String, limit: Int = 30): List<ClipSearchResult>
 
+    /** 返回 SQLite 中的只读向量快照，按最近更新时间降序排列。 */
+    suspend fun inspectStoredEmbeddings(): List<ClipEmbeddingRecord> = emptyList()
+
     /** 供持有原生资源的实现释放资源。 */
     override fun close() = Unit
 }
 
 /**
- * 基于独立 ONNX 图片编码器和文本编码器的 Chinese-CLIP RN50 实现。
+ * 基于独立 ONNX 图片编码器和文本编码器的 Chinese-CLIP 实现。
  *
  * 图片会话仅在重建索引期间存在，文本会话仅在一次查询期间存在，避免两个 FP32 模型同时驻留原生内存。
  */
@@ -216,6 +219,11 @@ class ChineseClipSearchEngine(
                 )
             }
     }
+
+    override suspend fun inspectStoredEmbeddings(): List<ClipEmbeddingRecord> =
+        withContext(Dispatchers.IO) {
+            embeddingDatabase.inspect()
+        }
 
     private fun encodeImage(
         session: OrtSession,

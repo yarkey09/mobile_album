@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.yarkey.clip.ChineseClipTokenizerTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-06T06:01:36.556Z" hostname="Y12YWFX2QQ" time="0.061">
-  <properties/>
-  <testcase name="encodeMatchesOfficialChineseClipTokenizer" classname="com.yarkey.clip.ChineseClipTokenizerTest" time="0.057"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

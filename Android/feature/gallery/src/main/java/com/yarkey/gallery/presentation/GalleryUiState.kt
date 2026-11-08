@@ -1,6 +1,7 @@
 package com.yarkey.gallery.presentation
 
 import com.yarkey.clip.ClipModel
+import com.yarkey.clip.ClipEmbeddingRecord
 import com.yarkey.gallery.domain.model.GalleryMedia
 
 enum class GalleryAccessMode {
@@ -27,6 +28,9 @@ data class GalleryUiState(
     val indexedImageCount: Int = 0,
     val indexTargetCount: Int = 0,
     val cacheHitCount: Int = 0,
+    val embeddingRecords: List<ClipEmbeddingRecord> = emptyList(),
+    val isEmbeddingDatabaseLoading: Boolean = false,
+    val embeddingDatabaseLoadFailed: Boolean = false,
 )
 
 enum class GalleryError {

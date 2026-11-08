@@ -83,6 +83,52 @@ internal class ClipEmbeddingDatabase(
         return result
     }
 
+    fun inspect(): List<ClipEmbeddingRecord> {
+        val result = ArrayList<ClipEmbeddingRecord>()
+        readableDatabase.query(
+            TABLE_EMBEDDINGS,
+            arrayOf(
+                COLUMN_MODEL_ID,
+                COLUMN_IMAGE_ID,
+                COLUMN_FINGERPRINT,
+                COLUMN_DIMENSION,
+                COLUMN_EMBEDDING,
+                COLUMN_UPDATED_AT,
+            ),
+            null,
+            null,
+            null,
+            null,
+            "$COLUMN_UPDATED_AT DESC",
+        ).use { cursor ->
+            val modelIdIndex = cursor.getColumnIndexOrThrow(COLUMN_MODEL_ID)
+            val imageIdIndex = cursor.getColumnIndexOrThrow(COLUMN_IMAGE_ID)
+            val fingerprintIndex = cursor.getColumnIndexOrThrow(COLUMN_FINGERPRINT)
+            val dimensionIndex = cursor.getColumnIndexOrThrow(COLUMN_DIMENSION)
+            val embeddingIndex = cursor.getColumnIndexOrThrow(COLUMN_EMBEDDING)
+            val updatedAtIndex = cursor.getColumnIndexOrThrow(COLUMN_UPDATED_AT)
+            while (cursor.moveToNext()) {
+                val imageId = cursor.getString(imageIdIndex)
+                runCatching {
+                    ClipEmbeddingRecord(
+                        modelId = cursor.getString(modelIdIndex),
+                        imageId = imageId,
+                        fingerprint = cursor.getString(fingerprintIndex),
+                        updatedAtMillis = cursor.getLong(updatedAtIndex),
+                        feature = EmbeddingCodec.decode(
+                            cursor.getBlob(embeddingIndex),
+                            cursor.getInt(dimensionIndex),
+                        ),
+                    )
+                }.onSuccess(result::add)
+                    .onFailure { error ->
+                        Log.w(TAG, "Ignoring invalid database record for $imageId", error)
+                    }
+            }
+        }
+        return result
+    }
+
     fun synchronize(
         modelId: String,
         currentImageIds: Set<String>,

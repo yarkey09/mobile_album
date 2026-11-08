@@ -2,6 +2,7 @@ package com.yarkey.gallery.presentation
 
 import com.yarkey.clip.ClipImage
 import com.yarkey.clip.ClipIndexResult
+import com.yarkey.clip.ClipEmbeddingRecord
 import com.yarkey.clip.ClipModel
 import com.yarkey.clip.ClipSearchEngine
 import com.yarkey.clip.ClipSearchResult
@@ -113,6 +114,31 @@ class GalleryViewModelTest {
         assertEquals(listOf("model-a", "model-b"), engine.indexedModelIds)
     }
 
+    @Test
+    fun loadingEmbeddingDatabaseExposesStoredRecords() = runTest {
+        val storedRecord = ClipEmbeddingRecord(
+            modelId = "model-a",
+            imageId = "content://media/1",
+            fingerprint = "1:100:100:100",
+            updatedAtMillis = 1_000L,
+            feature = floatArrayOf(0.1f, 0.2f),
+        )
+        val engine = FakeClipSearchEngine(storedRecords = listOf(storedRecord))
+        val viewModel = viewModel(
+            repository = FakeGalleryRepository(),
+            clipSearchEngine = engine,
+        )
+
+        viewModel.loadEmbeddingDatabase()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.embeddingRecords.size)
+        assertEquals(storedRecord.imageId, viewModel.uiState.value.embeddingRecords.single().imageId)
+        assertFalse(viewModel.uiState.value.isEmbeddingDatabaseLoading)
+        assertFalse(viewModel.uiState.value.embeddingDatabaseLoadFailed)
+        assertEquals(1, engine.inspectCount)
+    }
+
     private fun viewModel(
         repository: GalleryRepository,
         clipSearchEngine: ClipSearchEngine = FakeClipSearchEngine(),
@@ -144,6 +170,7 @@ class GalleryViewModelTest {
 
     private class FakeClipSearchEngine(
         private val results: List<ClipSearchResult> = emptyList(),
+        private val storedRecords: List<ClipEmbeddingRecord> = emptyList(),
     ) : ClipSearchEngine {
         override val availableModels = listOf(
             ClipModel("model-a", "Model A", "Test"),
@@ -152,6 +179,7 @@ class GalleryViewModelTest {
         override var selectedModelId = "model-a"
         var lastQuery: String? = null
         val indexedModelIds = mutableListOf<String>()
+        var inspectCount = 0
 
         override suspend fun selectModel(modelId: String) {
             selectedModelId = modelId
@@ -169,6 +197,11 @@ class GalleryViewModelTest {
         override suspend fun search(query: String, limit: Int): List<ClipSearchResult> {
             lastQuery = query
             return results.take(limit)
+        }
+
+        override suspend fun inspectStoredEmbeddings(): List<ClipEmbeddingRecord> {
+            inspectCount++
+            return storedRecords
         }
     }
 }

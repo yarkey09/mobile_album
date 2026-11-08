@@ -3,6 +3,7 @@ package com.yarkey.gallery.presentation
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
@@ -52,6 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -111,6 +114,7 @@ fun GalleryRoute(
         viewModel.onAccessModeChanged(GalleryPermissions.currentAccessMode(context))
     }
     val lifecycleOwner = LocalLifecycleOwner.current
+    var showEmbeddingDatabase by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.onAccessModeChanged(GalleryPermissions.currentAccessMode(context))
@@ -126,20 +130,37 @@ fun GalleryRoute(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    GalleryScreen(
-        uiState = uiState,
-        onRequestPermission = {
-            permissionLauncher.launch(GalleryPermissions.permissionsForRequest())
-        },
-        onRefresh = viewModel::refresh,
-        onSearchQueryChanged = viewModel::onSearchQueryChanged,
-        onSearch = viewModel::search,
-        onClearSearch = viewModel::clearSearch,
-        onModelSelected = viewModel::selectModel,
-        onMediaClick = viewModel::selectMedia,
-        onDismissPreview = viewModel::clearSelection,
-        modifier = modifier,
-    )
+    BackHandler(enabled = showEmbeddingDatabase) {
+        showEmbeddingDatabase = false
+    }
+
+    if (showEmbeddingDatabase) {
+        EmbeddingDatabaseScreen(
+            uiState = uiState,
+            onBack = { showEmbeddingDatabase = false },
+            onRefresh = viewModel::loadEmbeddingDatabase,
+            modifier = modifier,
+        )
+    } else {
+        GalleryScreen(
+            uiState = uiState,
+            onRequestPermission = {
+                permissionLauncher.launch(GalleryPermissions.permissionsForRequest())
+            },
+            onRefresh = viewModel::refresh,
+            onSearchQueryChanged = viewModel::onSearchQueryChanged,
+            onSearch = viewModel::search,
+            onClearSearch = viewModel::clearSearch,
+            onModelSelected = viewModel::selectModel,
+            onOpenEmbeddingDatabase = {
+                showEmbeddingDatabase = true
+                viewModel.loadEmbeddingDatabase()
+            },
+            onMediaClick = viewModel::selectMedia,
+            onDismissPreview = viewModel::clearSelection,
+            modifier = modifier,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -152,6 +173,7 @@ internal fun GalleryScreen(
     onSearch: () -> Unit,
     onClearSearch: () -> Unit,
     onModelSelected: (String) -> Unit,
+    onOpenEmbeddingDatabase: () -> Unit,
     onMediaClick: (GalleryMedia) -> Unit,
     onDismissPreview: () -> Unit,
     modifier: Modifier = Modifier,
@@ -176,6 +198,14 @@ internal fun GalleryScreen(
                         }
                     },
                     actions = {
+                        IconButton(onClick = onOpenEmbeddingDatabase) {
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = stringResource(
+                                    R.string.embedding_database_open
+                                ),
+                            )
+                        }
                         if (uiState.accessMode == GalleryAccessMode.FULL ||
                             uiState.accessMode == GalleryAccessMode.LIMITED
                         ) {

@@ -5,6 +5,7 @@ plugins {
 
 android {
     namespace = "com.yarkey.chineseclip"
+    ndkVersion = providers.gradleProperty("ortNdkVersion").get()
     compileSdk {
         version = release(37)
     }
@@ -34,6 +35,23 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    externalNativeBuild {
+        // This lightweight CMake target exposes external ORT sources to Android Studio without
+        // compiling a second copy of ONNX Runtime.
+        cmake {
+            path = file("src/debug/cpp/CMakeLists.txt")
+            version = providers.gradleProperty("androidCmakeVersion").get()
+        }
+    }
+    packaging {
+        jniLibs {
+            // Keep DWARF and symbol tables so Android Studio can bind LLDB breakpoints to ORT C/C++.
+            keepDebugSymbols += setOf(
+                "**/libonnxruntime.so",
+                "**/libonnxruntime4j_jni.so",
+            )
+        }
     }
 }
 

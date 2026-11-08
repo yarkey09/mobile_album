@@ -1,8 +1,0 @@
-com.yarkey.gallery-pngs-0 /Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/build/generated/res/pngs/debug
-com.yarkey.gallery-updated_navigation_xml-1 /Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/build/generated/updated_navigation_xml/debug
-com.yarkey.gallery-mergeDebugResources-2 /Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/build/intermediates/incremental/debug/mergeDebugResources/merged.dir
-com.yarkey.gallery-mergeDebugResources-3 /Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/build/intermediates/incremental/debug/mergeDebugResources/stripped.dir
-com.yarkey.gallery-debug-4 /Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/build/intermediates/merged_res/debug/mergeDebugResources
-com.yarkey.gallery-debug-5 /Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/build/intermediates/packaged_res/debug/packageDebugResources
-com.yarkey.gallery-debug-6 /Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/debug/res
-com.yarkey.gallery-main-7 /Users/bytedance/Documents/sourcecode/model_clip/Android/feature/gallery/src/main/res

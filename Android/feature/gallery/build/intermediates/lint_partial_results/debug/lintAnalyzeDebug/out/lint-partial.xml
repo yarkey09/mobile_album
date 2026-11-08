@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<incidents format="6" by="lint 9.1.1" type="partial_results">
-    <map id="UnusedResources">
-        <entry
-            name="model"
-            string="string[gallery_title(U),gallery_limited_access(U),gallery_manage_access(U),gallery_refresh(U),gallery_media(U),gallery_video(U),gallery_permission_title(U),gallery_permission_message(U),gallery_grant_permission(U),gallery_empty_title(U),gallery_empty_message(U),gallery_error_title(U),gallery_error_message(U),gallery_retry(U),gallery_close_preview(U),clip_search_placeholder(U),clip_search(U),clip_clear_search(U),clip_waiting(U),clip_preparing(U),clip_indexing(U),clip_ready(U),clip_results(U),clip_failed(U),clip_no_results_title(U),clip_no_results_message(U)];;;;"/>
-    </map>
-
-</incidents>

@@ -28,4 +28,17 @@
     <string name="clip_failed">模型加载或推理失败，请刷新重试</string>
     <string name="clip_no_results_title">没有匹配图片</string>
     <string name="clip_no_results_message">换一个描述后重新搜索。</string>
+    <string name="embedding_database_open">查看向量数据库</string>
+    <string name="embedding_database_title">向量数据库</string>
+    <string name="embedding_database_back">返回相册</string>
+    <string name="embedding_database_refresh">刷新数据库</string>
+    <string name="embedding_database_records">记录</string>
+    <string name="embedding_database_models">模型</string>
+    <string name="embedding_database_vector_size">向量数据</string>
+    <string name="embedding_database_record_meta">%1$d 维 · %2$s</string>
+    <string name="embedding_database_fingerprint">图片指纹：%1$s</string>
+    <string name="embedding_database_empty_title">暂无图片向量</string>
+    <string name="embedding_database_empty_message">图片索引完成后，向量记录会显示在这里。</string>
+    <string name="embedding_database_error_title">无法读取向量数据库</string>
+    <string name="embedding_database_error_message">数据库读取失败，请刷新重试。</string>
 </resources>
