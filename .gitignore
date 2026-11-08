@@ -20,3 +20,6 @@ local.properties
 /Chinese-CLIP/
 /cache/
 /models/
+/.trae-html-share-packages/
+/dataset/*
+!/dataset/index.html

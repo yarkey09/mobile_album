@@ -13,7 +13,7 @@ import torch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-CHINESE_CLIP_ROOT = PROJECT_ROOT / "Chinese-CLIP"
+CHINESE_CLIP_ROOT = PROJECT_ROOT / "training" / "Chinese-CLIP"
 DEFAULT_DOWNLOAD_ROOT = PROJECT_ROOT / "cache" / "clip"
 MODEL_ARCHS = ("ViT-B-16", "ViT-L-14", "ViT-L-14-336", "ViT-H-14", "RN50")
 

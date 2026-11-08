@@ -1,0 +1,1541 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CLIP Dataset</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f5f4;
+      --surface: #ffffff;
+      --surface-muted: #eef1ef;
+      --ink: #17201c;
+      --muted: #69736e;
+      --line: #d7ddda;
+      --accent: #007c67;
+      --accent-soft: #d9f2eb;
+      --accent-ink: #005446;
+      --danger: #b83a36;
+      --danger-soft: #fae7e5;
+      --shadow: 0 12px 34px rgba(23, 32, 28, 0.08);
+      --radius: 8px;
+      --header-height: 68px;
+      --font: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    button,
+    summary {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    summary:focus-visible,
+    .image-item:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .app {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      min-height: var(--header-height);
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 12px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      z-index: 30;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 190px;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 7px;
+      background: var(--ink);
+      color: var(--surface);
+      display: grid;
+      place-items: center;
+      font: 700 13px/1 var(--mono);
+    }
+
+    .brand-copy strong {
+      display: block;
+      font-size: 15px;
+      line-height: 19px;
+    }
+
+    .brand-copy span {
+      display: block;
+      color: var(--muted);
+      font: 12px/16px var(--mono);
+    }
+
+    .toolbar {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .search {
+      width: min(340px, 34vw);
+      position: relative;
+    }
+
+    .search svg {
+      width: 17px;
+      height: 17px;
+      color: var(--muted);
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .search input,
+    .compact-select {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .search input {
+      padding: 0 12px 0 36px;
+    }
+
+    .compact-select {
+      width: auto;
+      min-width: 110px;
+      padding: 0 30px 0 10px;
+    }
+
+    .button {
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 120ms ease, background 120ms ease, color 120ms ease, transform 120ms ease;
+    }
+
+    .button:hover {
+      border-color: #aeb8b3;
+      background: #fafbfa;
+    }
+
+    .button:active {
+      transform: translateY(1px);
+    }
+
+    .button svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .button.primary {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .button.primary:hover {
+      background: var(--accent-ink);
+      border-color: var(--accent-ink);
+    }
+
+    .image-picker {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .image-picker input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .image-picker .button {
+      pointer-events: none;
+    }
+
+    .image-picker[aria-disabled="true"] {
+      opacity: 0.64;
+      pointer-events: none;
+    }
+
+    .button.danger {
+      color: var(--danger);
+      border-color: #e6c3c0;
+    }
+
+    .icon-button {
+      width: 34px;
+      height: 34px;
+      padding: 0;
+    }
+
+    .export-menu {
+      position: relative;
+    }
+
+    .export-menu summary {
+      list-style: none;
+    }
+
+    .export-menu summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .export-popover {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      width: 182px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      z-index: 50;
+    }
+
+    .export-popover button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      text-align: left;
+      padding: 9px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .export-popover button:hover {
+      background: var(--surface-muted);
+    }
+
+    .workspace {
+      min-height: calc(100vh - var(--header-height));
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 410px;
+    }
+
+    .library {
+      min-width: 0;
+      padding: 18px 20px 32px;
+      border-right: 1px solid var(--line);
+    }
+
+    .summary {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .metric {
+      min-width: 106px;
+      padding: 0 24px 12px 0;
+      margin-right: 24px;
+      border-right: 1px solid var(--line);
+    }
+
+    .metric:last-child {
+      border-right: 0;
+    }
+
+    .metric strong {
+      display: block;
+      font: 650 18px/23px var(--mono);
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 17px;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 12px;
+    }
+
+    .image-item {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0;
+      text-align: left;
+      cursor: pointer;
+      min-width: 0;
+      overflow: hidden;
+      transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+      animation: item-in 180ms ease both;
+    }
+
+    .image-item:hover {
+      border-color: #aeb8b3;
+      transform: translateY(-1px);
+    }
+
+    .image-item.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent);
+    }
+
+    .thumb {
+      aspect-ratio: 4 / 3;
+      background: var(--surface-muted);
+      border-bottom: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .missing-thumb {
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      gap: 7px;
+      font-size: 12px;
+    }
+
+    .missing-thumb svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .item-info {
+      padding: 10px 11px 11px;
+    }
+
+    .item-name {
+      font-size: 13px;
+      line-height: 18px;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-meta {
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted);
+      font: 11px/16px var(--mono);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      display: inline-block;
+      background: #aeb8b3;
+      margin-right: 5px;
+    }
+
+    .status-dot.approved {
+      background: var(--accent);
+    }
+
+    .status-dot.rejected {
+      background: var(--danger);
+    }
+
+    .empty {
+      min-height: 480px;
+      border: 1px dashed #bac4bf;
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.42);
+      color: var(--muted);
+    }
+
+    .empty-inner {
+      max-width: 340px;
+      padding: 28px;
+    }
+
+    .empty-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 14px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--accent-soft);
+      color: var(--accent-ink);
+    }
+
+    .empty-icon svg {
+      width: 25px;
+      height: 25px;
+    }
+
+    .empty h2 {
+      margin: 0 0 7px;
+      color: var(--ink);
+      font-size: 17px;
+      line-height: 23px;
+    }
+
+    .empty p {
+      margin: 0 0 18px;
+      font-size: 13px;
+      line-height: 20px;
+    }
+
+    .inspector {
+      background: var(--surface);
+      min-width: 0;
+      padding: 18px;
+    }
+
+    .inspector-empty {
+      min-height: 420px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .inspector-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .inspector-head h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 22px;
+      overflow-wrap: anywhere;
+    }
+
+    .save-state {
+      color: var(--muted);
+      font: 11px/17px var(--mono);
+      white-space: nowrap;
+    }
+
+    .preview {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      background: var(--surface-muted);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      margin-bottom: 17px;
+    }
+
+    .preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field {
+      min-width: 0;
+      margin-bottom: 13px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label,
+    .section-label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 17px;
+      font-weight: 600;
+    }
+
+    .field input,
+    .field textarea,
+    .field select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 9px 10px;
+    }
+
+    .field input,
+    .field select {
+      height: 38px;
+    }
+
+    .field textarea {
+      min-height: 76px;
+      resize: vertical;
+      line-height: 22px;
+    }
+
+    .field input[readonly] {
+      background: var(--surface-muted);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .captions-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 7px 0 8px;
+      padding-top: 13px;
+      border-top: 1px solid var(--line);
+    }
+
+    .captions-head .section-label {
+      margin: 0;
+    }
+
+    .caption-row {
+      position: relative;
+      margin-bottom: 9px;
+    }
+
+    .caption-row textarea {
+      width: 100%;
+      min-height: 82px;
+      padding: 10px 43px 24px 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      resize: vertical;
+      color: var(--ink);
+      line-height: 22px;
+      background: var(--surface);
+    }
+
+    .caption-row .remove-caption {
+      position: absolute;
+      right: 7px;
+      top: 7px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      width: 29px;
+      height: 29px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+    }
+
+    .caption-row .remove-caption:hover {
+      color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .caption-row .remove-caption svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .caption-count {
+      position: absolute;
+      right: 10px;
+      bottom: 6px;
+      color: var(--muted);
+      font: 10px/14px var(--mono);
+    }
+
+    .inspector-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-top: 13px;
+      margin-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .drop-active .library {
+      background: var(--accent-soft);
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translate(-50%, 16px);
+      z-index: 100;
+      max-width: min(440px, calc(100vw - 32px));
+      padding: 10px 14px;
+      border-radius: 7px;
+      background: var(--ink);
+      color: var(--surface);
+      font-size: 13px;
+      line-height: 19px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      box-shadow: var(--shadow);
+    }
+
+    .toast.visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    .file-input {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      left: 0;
+      bottom: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @keyframes item-in {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    @media (max-width: 980px) {
+      .topbar {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      .toolbar {
+        width: 100%;
+        flex-basis: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+      }
+
+      .search {
+        flex: 1 1 240px;
+        width: auto;
+      }
+
+      .workspace {
+        grid-template-columns: minmax(0, 1fr) 350px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      :root {
+        --header-height: auto;
+      }
+
+      .topbar {
+        position: static;
+        padding: 12px;
+      }
+
+      .brand-copy span {
+        display: none;
+      }
+
+      .toolbar {
+        gap: 6px;
+      }
+
+      .search {
+        flex-basis: 100%;
+        order: -1;
+      }
+
+      .compact-select {
+        flex: 1 1 calc(50% - 3px);
+        min-width: 0;
+      }
+
+      .image-picker {
+        flex: 1;
+      }
+
+      .image-picker .button {
+        width: 100%;
+      }
+
+      .button .button-label.optional {
+        display: none;
+      }
+
+      .workspace {
+        display: block;
+      }
+
+      .library {
+        padding: 14px 12px 24px;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .summary {
+        overflow-x: auto;
+      }
+
+      .metric {
+        flex: 1 1 25%;
+        min-width: 0;
+        margin-right: 8px;
+        padding-right: 8px;
+      }
+
+      .gallery {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .inspector {
+        padding: 16px 12px 28px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .field.full {
+        grid-column: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand" aria-label="CLIP Dataset">
+        <div class="brand-mark">CD</div>
+        <div class="brand-copy">
+          <strong>CLIP Dataset</strong>
+          <span>local annotation workspace</span>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search">
+          <i data-lucide="search"></i>
+          <input id="searchInput" type="search" placeholder="搜索文件名或 Caption" aria-label="搜索数据集">
+        </div>
+
+        <select class="compact-select" id="splitFilter" aria-label="按数据集划分筛选">
+          <option value="all">全部划分</option>
+          <option value="unassigned">未划分</option>
+          <option value="train">Train</option>
+          <option value="valid">Valid</option>
+          <option value="test">Test</option>
+        </select>
+
+        <select class="compact-select" id="statusFilter" aria-label="按状态筛选">
+          <option value="all">全部状态</option>
+          <option value="draft">草稿</option>
+          <option value="approved">已确认</option>
+          <option value="rejected">已排除</option>
+        </select>
+
+        <button class="button" id="importAnnotationsButton" type="button">
+          <i data-lucide="file-up"></i>
+          <span class="button-label optional">导入标注</span>
+        </button>
+
+        <div class="image-picker" id="addImagesButton">
+          <button class="button primary" type="button" tabindex="-1" aria-hidden="true">
+            <i data-lucide="images"></i>
+            <span class="button-label">添加图片</span>
+          </button>
+          <input id="imageInput" type="file" accept="image/*" multiple aria-label="选择本地图片文件">
+        </div>
+
+        <details class="export-menu" id="exportMenu">
+          <summary class="button">
+            <i data-lucide="download"></i>
+            <span class="button-label optional">导出</span>
+          </summary>
+          <div class="export-popover">
+            <button id="exportJsonButton" type="button">导出 JSON</button>
+            <button id="exportJsonlButton" type="button">导出 JSONL</button>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="library" id="library">
+        <div class="summary" aria-label="数据集统计">
+          <div class="metric">
+            <strong id="imageCount">0</strong>
+            <span>图片</span>
+          </div>
+          <div class="metric">
+            <strong id="captionCount">0</strong>
+            <span>Caption</span>
+          </div>
+          <div class="metric">
+            <strong id="approvedCount">0</strong>
+            <span>已确认</span>
+          </div>
+          <div class="metric">
+            <strong id="visibleCount">0</strong>
+            <span>当前显示</span>
+          </div>
+        </div>
+
+        <div id="gallery" class="gallery"></div>
+
+        <div id="emptyState" class="empty" hidden>
+          <div class="empty-inner">
+            <div class="empty-icon"><i data-lucide="image-plus"></i></div>
+            <h2>还没有图片</h2>
+            <p>选择本地图片后即可建立数据集清单，图片副本仅保存在当前浏览器。</p>
+            <button class="button primary" id="emptyAddButton" type="button">
+              <i data-lucide="images"></i>
+              <span>添加图片</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="inspector" id="inspector">
+        <div class="inspector-empty">选择一张图片编辑标注</div>
+      </aside>
+    </main>
+  </div>
+
+  <input class="file-input" id="annotationInput" type="file" accept=".json,.jsonl,application/json" aria-label="选择标注文件">
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const DB_NAME = "clip-dataset-manager";
+      const DB_VERSION = 1;
+      const STORE_NAME = "images";
+
+      const state = {
+        db: null,
+        records: [],
+        selectedId: null,
+        query: "",
+        split: "all",
+        status: "all",
+        urls: new Map(),
+        toastTimer: null
+      };
+
+      const elements = {
+        app: document.getElementById("app"),
+        gallery: document.getElementById("gallery"),
+        emptyState: document.getElementById("emptyState"),
+        inspector: document.getElementById("inspector"),
+        searchInput: document.getElementById("searchInput"),
+        splitFilter: document.getElementById("splitFilter"),
+        statusFilter: document.getElementById("statusFilter"),
+        imageInput: document.getElementById("imageInput"),
+        annotationInput: document.getElementById("annotationInput"),
+        addImagesButton: document.getElementById("addImagesButton"),
+        emptyAddButton: document.getElementById("emptyAddButton"),
+        importAnnotationsButton: document.getElementById("importAnnotationsButton"),
+        exportJsonButton: document.getElementById("exportJsonButton"),
+        exportJsonlButton: document.getElementById("exportJsonlButton"),
+        exportMenu: document.getElementById("exportMenu"),
+        imageCount: document.getElementById("imageCount"),
+        captionCount: document.getElementById("captionCount"),
+        approvedCount: document.getElementById("approvedCount"),
+        visibleCount: document.getElementById("visibleCount"),
+        toast: document.getElementById("toast")
+      };
+
+      function refreshIcons(root = document) {
+        if (window.lucide) {
+          window.lucide.createIcons({ attrs: { "aria-hidden": "true" }, root });
+        }
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function showToast(message) {
+        clearTimeout(state.toastTimer);
+        elements.toast.textContent = message;
+        elements.toast.classList.add("visible");
+        state.toastTimer = setTimeout(() => {
+          elements.toast.classList.remove("visible");
+        }, 2600);
+      }
+
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+          request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              const store = db.createObjectStore(STORE_NAME, { keyPath: "imageId" });
+              store.createIndex("filename", "filename", { unique: false });
+              store.createIndex("updatedAt", "updatedAt", { unique: false });
+            }
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      function runStore(mode, operation) {
+        return new Promise((resolve, reject) => {
+          const transaction = state.db.transaction(STORE_NAME, mode);
+          const store = transaction.objectStore(STORE_NAME);
+          const request = operation(store);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
+      const getAllRecords = () => runStore("readonly", store => store.getAll());
+      const putRecord = record => runStore("readwrite", store => store.put(record));
+      const deleteRecord = imageId => runStore("readwrite", store => store.delete(imageId));
+
+      async function sha256(file) {
+        const buffer = await file.arrayBuffer();
+        const digest = await crypto.subtle.digest("SHA-256", buffer);
+        return Array.from(new Uint8Array(digest))
+          .map(byte => byte.toString(16).padStart(2, "0"))
+          .join("");
+      }
+
+      function makeCaptionId() {
+        if (crypto.randomUUID) {
+          return `cap_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
+        }
+        return `cap_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+      }
+
+      function createObjectUrl(record) {
+        if (!record.blob) return "";
+        if (!state.urls.has(record.imageId)) {
+          state.urls.set(record.imageId, URL.createObjectURL(record.blob));
+        }
+        return state.urls.get(record.imageId);
+      }
+
+      function releaseObjectUrl(imageId) {
+        const url = state.urls.get(imageId);
+        if (url) URL.revokeObjectURL(url);
+        state.urls.delete(imageId);
+      }
+
+      function sortRecords(records) {
+        return [...records].sort((a, b) =>
+          a.filename.localeCompare(b.filename, "zh-CN", { numeric: true })
+        );
+      }
+
+      function filteredRecords() {
+        const query = state.query.trim().toLowerCase();
+        return sortRecords(state.records).filter(record => {
+          const matchesQuery = !query ||
+            record.filename.toLowerCase().includes(query) ||
+            record.imageId.toLowerCase().includes(query) ||
+            record.captions.some(item => item.text.toLowerCase().includes(query));
+          const matchesSplit = state.split === "all" || record.split === state.split;
+          const matchesStatus = state.status === "all" || record.status === state.status;
+          return matchesQuery && matchesSplit && matchesStatus;
+        });
+      }
+
+      function renderMetrics(visibleRecords) {
+        const captionTotal = state.records.reduce(
+          (total, record) => total + record.captions.filter(item => item.text.trim()).length,
+          0
+        );
+        elements.imageCount.textContent = state.records.length;
+        elements.captionCount.textContent = captionTotal;
+        elements.approvedCount.textContent = state.records.filter(record => record.status === "approved").length;
+        elements.visibleCount.textContent = visibleRecords.length;
+      }
+
+      function renderGallery() {
+        const visibleRecords = filteredRecords();
+        renderMetrics(visibleRecords);
+        elements.emptyState.hidden = state.records.length !== 0;
+
+        if (state.records.length === 0) {
+          elements.gallery.innerHTML = "";
+          renderInspector();
+          refreshIcons();
+          return;
+        }
+
+        if (visibleRecords.length === 0) {
+          elements.gallery.innerHTML = `
+            <div class="empty" style="grid-column: 1 / -1;">
+              <div class="empty-inner">
+                <div class="empty-icon"><i data-lucide="search-x"></i></div>
+                <h2>没有匹配的数据</h2>
+                <p>修改搜索词或筛选条件后重试。</p>
+              </div>
+            </div>
+          `;
+          refreshIcons(elements.gallery);
+          return;
+        }
+
+        elements.gallery.innerHTML = visibleRecords.map((record, index) => {
+          const imageUrl = createObjectUrl(record);
+          const captionTotal = record.captions.filter(item => item.text.trim()).length;
+          const imageMarkup = imageUrl
+            ? `<img src="${imageUrl}" alt="">`
+            : `<div class="missing-thumb"><i data-lucide="image-off"></i><span>仅有标注</span></div>`;
+          return `
+            <button
+              class="image-item ${record.imageId === state.selectedId ? "selected" : ""}"
+              type="button"
+              data-image-id="${escapeHtml(record.imageId)}"
+              style="animation-delay:${Math.min(index * 18, 180)}ms"
+            >
+              <div class="thumb">${imageMarkup}</div>
+              <div class="item-info">
+                <div class="item-name" title="${escapeHtml(record.filename)}">${escapeHtml(record.filename)}</div>
+                <div class="item-meta">
+                  <span><span class="status-dot ${escapeHtml(record.status)}"></span>${escapeHtml(record.split)}</span>
+                  <span>${captionTotal} CAP</span>
+                </div>
+              </div>
+            </button>
+          `;
+        }).join("");
+
+        elements.gallery.querySelectorAll(".image-item").forEach(button => {
+          button.addEventListener("click", () => {
+            state.selectedId = button.dataset.imageId;
+            renderGallery();
+            renderInspector();
+          });
+        });
+        refreshIcons(elements.gallery);
+      }
+
+      function selectedRecord() {
+        return state.records.find(record => record.imageId === state.selectedId) || null;
+      }
+
+      async function updateSelected(patch, rerenderGallery = false) {
+        const record = selectedRecord();
+        if (!record) return;
+        Object.assign(record, patch, { updatedAt: new Date().toISOString() });
+        const saveState = document.getElementById("saveState");
+        if (saveState) saveState.textContent = "保存中";
+        await putRecord(record);
+        if (saveState) saveState.textContent = "已保存";
+        if (rerenderGallery) renderGallery();
+        else renderMetrics(filteredRecords());
+      }
+
+      function renderInspector() {
+        const record = selectedRecord();
+        if (!record) {
+          elements.inspector.innerHTML = `<div class="inspector-empty">选择一张图片编辑标注</div>`;
+          return;
+        }
+
+        const imageUrl = createObjectUrl(record);
+        const previewMarkup = imageUrl
+          ? `<img src="${imageUrl}" alt="${escapeHtml(record.filename)}">`
+          : `<div class="missing-thumb"><i data-lucide="image-off"></i><span>重新添加图片可恢复预览</span></div>`;
+
+        const captionsMarkup = record.captions.length
+          ? record.captions.map(caption => `
+              <div class="caption-row" data-caption-id="${escapeHtml(caption.captionId)}">
+                <textarea aria-label="图片 Caption" placeholder="输入自然中文描述">${escapeHtml(caption.text)}</textarea>
+                <button class="remove-caption" type="button" title="删除 Caption" aria-label="删除 Caption">
+                  <i data-lucide="trash-2"></i>
+                </button>
+                <span class="caption-count">${caption.text.trim().length}</span>
+              </div>
+            `).join("")
+          : `<div class="inspector-empty" style="min-height:100px;">还没有 Caption</div>`;
+
+        elements.inspector.innerHTML = `
+          <div class="inspector-head">
+            <h2>${escapeHtml(record.filename)}</h2>
+            <span class="save-state" id="saveState">已保存</span>
+          </div>
+          <div class="preview">${previewMarkup}</div>
+
+          <div class="form-grid">
+            <div class="field">
+              <label for="imageIdField">Image ID</label>
+              <input id="imageIdField" value="${escapeHtml(record.imageId)}" readonly>
+            </div>
+            <div class="field">
+              <label for="groupIdField">Group ID</label>
+              <input id="groupIdField" value="${escapeHtml(record.groupId)}">
+            </div>
+            <div class="field full">
+              <label for="pathField">相对路径</label>
+              <input id="pathField" value="${escapeHtml(record.path)}">
+            </div>
+            <div class="field">
+              <label for="splitField">数据划分</label>
+              <select id="splitField">
+                <option value="unassigned" ${record.split === "unassigned" ? "selected" : ""}>未划分</option>
+                <option value="train" ${record.split === "train" ? "selected" : ""}>Train</option>
+                <option value="valid" ${record.split === "valid" ? "selected" : ""}>Valid</option>
+                <option value="test" ${record.split === "test" ? "selected" : ""}>Test</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="statusField">标注状态</label>
+              <select id="statusField">
+                <option value="draft" ${record.status === "draft" ? "selected" : ""}>草稿</option>
+                <option value="approved" ${record.status === "approved" ? "selected" : ""}>已确认</option>
+                <option value="rejected" ${record.status === "rejected" ? "selected" : ""}>已排除</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="captions-head">
+            <span class="section-label">Captions</span>
+            <button class="button icon-button" id="addCaptionButton" type="button" title="添加 Caption" aria-label="添加 Caption">
+              <i data-lucide="plus"></i>
+            </button>
+          </div>
+          <div id="captionsList">${captionsMarkup}</div>
+
+          <div class="inspector-actions">
+            <span class="save-state">${escapeHtml(record.imageId)}</span>
+            <button class="button danger" id="deleteImageButton" type="button">
+              <i data-lucide="trash-2"></i>
+              <span>删除记录</span>
+            </button>
+          </div>
+        `;
+
+        const groupIdField = document.getElementById("groupIdField");
+        const pathField = document.getElementById("pathField");
+        const splitField = document.getElementById("splitField");
+        const statusField = document.getElementById("statusField");
+
+        groupIdField.addEventListener("change", () => updateSelected({ groupId: groupIdField.value.trim() }));
+        pathField.addEventListener("change", () => updateSelected({ path: pathField.value.trim() }));
+        splitField.addEventListener("change", () => updateSelected({ split: splitField.value }, true));
+        statusField.addEventListener("change", () => updateSelected({ status: statusField.value }, true));
+
+        elements.inspector.querySelectorAll(".caption-row").forEach(row => {
+          const captionId = row.dataset.captionId;
+          const textarea = row.querySelector("textarea");
+          const counter = row.querySelector(".caption-count");
+          let timer = null;
+
+          textarea.addEventListener("input", () => {
+            counter.textContent = textarea.value.trim().length;
+            clearTimeout(timer);
+            timer = setTimeout(async () => {
+              const current = selectedRecord();
+              if (!current) return;
+              const item = current.captions.find(caption => caption.captionId === captionId);
+              if (!item) return;
+              item.text = textarea.value;
+              await updateSelected({ captions: current.captions });
+            }, 280);
+          });
+
+          row.querySelector(".remove-caption").addEventListener("click", async () => {
+            const current = selectedRecord();
+            if (!current) return;
+            current.captions = current.captions.filter(caption => caption.captionId !== captionId);
+            await updateSelected({ captions: current.captions }, true);
+            renderInspector();
+          });
+        });
+
+        document.getElementById("addCaptionButton").addEventListener("click", async () => {
+          const current = selectedRecord();
+          if (!current) return;
+          current.captions.push({ captionId: makeCaptionId(), text: "" });
+          await updateSelected({ captions: current.captions }, true);
+          renderInspector();
+          const textareas = elements.inspector.querySelectorAll(".caption-row textarea");
+          textareas[textareas.length - 1]?.focus();
+        });
+
+        document.getElementById("deleteImageButton").addEventListener("click", async () => {
+          if (!confirm(`删除 ${record.filename} 的本地记录？原始图片文件不会被删除。`)) return;
+          await deleteRecord(record.imageId);
+          releaseObjectUrl(record.imageId);
+          state.records = state.records.filter(item => item.imageId !== record.imageId);
+          state.selectedId = state.records[0]?.imageId || null;
+          renderGallery();
+          renderInspector();
+          showToast("记录已删除");
+        });
+
+        refreshIcons(elements.inspector);
+      }
+
+      async function addImageFiles(files) {
+        const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
+        if (!imageFiles.length) {
+          showToast("没有找到可导入的图片");
+          return;
+        }
+
+        elements.addImagesButton.setAttribute("aria-disabled", "true");
+        elements.imageInput.disabled = true;
+        elements.addImagesButton.querySelector(".button-label").textContent = "处理中";
+        let added = 0;
+        let skipped = 0;
+
+        for (const file of imageFiles) {
+          const hash = await sha256(file);
+          const imageId = `img_${hash.slice(0, 12)}`;
+          const existing = state.records.find(record => record.imageId === imageId);
+          if (existing) {
+            if (!existing.blob) {
+              existing.blob = file;
+              existing.mime = file.type;
+              existing.size = file.size;
+              existing.updatedAt = new Date().toISOString();
+              await putRecord(existing);
+              added += 1;
+            } else {
+              skipped += 1;
+            }
+            continue;
+          }
+
+          const now = new Date().toISOString();
+          const record = {
+            imageId,
+            filename: file.name,
+            path: `raw/images/${file.name}`,
+            groupId: `scene_${hash.slice(0, 8)}`,
+            split: "unassigned",
+            status: "draft",
+            hash,
+            mime: file.type,
+            size: file.size,
+            blob: file,
+            captions: [{ captionId: makeCaptionId(), text: "" }],
+            createdAt: now,
+            updatedAt: now
+          };
+          await putRecord(record);
+          state.records.push(record);
+          added += 1;
+        }
+
+        state.records = sortRecords(state.records);
+        state.selectedId ||= state.records[0]?.imageId || null;
+        elements.addImagesButton.setAttribute("aria-disabled", "false");
+        elements.imageInput.disabled = false;
+        elements.addImagesButton.querySelector(".button-label").textContent = "添加图片";
+        renderGallery();
+        renderInspector();
+        showToast(`已添加 ${added} 张图片${skipped ? `，跳过 ${skipped} 张重复图片` : ""}`);
+      }
+
+      function flattenAnnotations() {
+        return sortRecords(state.records)
+          .filter(record => record.status !== "rejected")
+          .flatMap(record =>
+            record.captions
+              .filter(caption => caption.text.trim())
+              .map(caption => ({
+                image_id: record.imageId,
+                path: record.path,
+                caption_id: caption.captionId,
+                caption: caption.text.trim(),
+                group_id: record.groupId,
+                split: record.split,
+                status: record.status
+              }))
+          );
+      }
+
+      function downloadText(filename, content, type) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function exportAnnotations(format) {
+        const annotations = flattenAnnotations();
+        if (!annotations.length) {
+          showToast("没有可导出的 Caption");
+          return;
+        }
+        const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+        if (format === "jsonl") {
+          downloadText(
+            `clip-dataset-${date}.jsonl`,
+            annotations.map(item => JSON.stringify(item)).join("\n") + "\n",
+            "application/x-ndjson;charset=utf-8"
+          );
+        } else {
+          downloadText(
+            `clip-dataset-${date}.json`,
+            JSON.stringify(annotations, null, 2) + "\n",
+            "application/json;charset=utf-8"
+          );
+        }
+        elements.exportMenu.open = false;
+        showToast(`已导出 ${annotations.length} 条 Caption`);
+      }
+
+      async function importAnnotations(file) {
+        const content = await file.text();
+        let annotations;
+        try {
+          const trimmed = content.trim();
+          annotations = trimmed.startsWith("[")
+            ? JSON.parse(trimmed)
+            : trimmed.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line));
+        } catch (error) {
+          showToast("标注文件解析失败");
+          return;
+        }
+
+        if (!Array.isArray(annotations)) {
+          showToast("标注文件必须是 JSON 数组或 JSONL");
+          return;
+        }
+
+        let merged = 0;
+        for (const annotation of annotations) {
+          const imageId = annotation.image_id || annotation.imageId;
+          const path = annotation.path || "";
+          const filename = path.split("/").pop() || `${imageId || "unknown"}.jpg`;
+          let record = state.records.find(item => item.imageId === imageId);
+          if (!record) {
+            record = state.records.find(item => item.filename === filename);
+          }
+          if (!record) {
+            const now = new Date().toISOString();
+            record = {
+              imageId: imageId || `img_imported_${Date.now().toString(36)}_${merged}`,
+              filename,
+              path: path || `raw/images/${filename}`,
+              groupId: annotation.group_id || annotation.groupId || `scene_imported_${merged}`,
+              split: annotation.split || "unassigned",
+              status: annotation.status || "draft",
+              hash: "",
+              mime: "",
+              size: 0,
+              blob: null,
+              captions: [],
+              createdAt: now,
+              updatedAt: now
+            };
+            state.records.push(record);
+          }
+
+          const captionText = annotation.caption || annotation.text || "";
+          if (captionText && !record.captions.some(item => item.text.trim() === captionText.trim())) {
+            record.captions.push({
+              captionId: annotation.caption_id || annotation.captionId || makeCaptionId(),
+              text: captionText
+            });
+          }
+          record.groupId = annotation.group_id || annotation.groupId || record.groupId;
+          record.split = annotation.split || record.split;
+          record.status = annotation.status || record.status;
+          record.updatedAt = new Date().toISOString();
+          await putRecord(record);
+          merged += 1;
+        }
+
+        state.records = sortRecords(state.records);
+        state.selectedId ||= state.records[0]?.imageId || null;
+        renderGallery();
+        renderInspector();
+        showToast(`已合并 ${merged} 条标注`);
+      }
+
+      function bindEvents() {
+        elements.emptyAddButton.addEventListener("click", () => elements.imageInput.click());
+        elements.imageInput.addEventListener("change", async event => {
+          await addImageFiles(event.target.files);
+          event.target.value = "";
+        });
+
+        elements.importAnnotationsButton.addEventListener("click", () => elements.annotationInput.click());
+        elements.annotationInput.addEventListener("change", async event => {
+          const file = event.target.files[0];
+          if (file) await importAnnotations(file);
+          event.target.value = "";
+        });
+
+        elements.searchInput.addEventListener("input", event => {
+          state.query = event.target.value;
+          renderGallery();
+        });
+        elements.splitFilter.addEventListener("change", event => {
+          state.split = event.target.value;
+          renderGallery();
+        });
+        elements.statusFilter.addEventListener("change", event => {
+          state.status = event.target.value;
+          renderGallery();
+        });
+
+        elements.exportJsonButton.addEventListener("click", () => exportAnnotations("json"));
+        elements.exportJsonlButton.addEventListener("click", () => exportAnnotations("jsonl"));
+
+        document.addEventListener("dragover", event => {
+          event.preventDefault();
+          elements.app.classList.add("drop-active");
+        });
+        document.addEventListener("dragleave", event => {
+          if (event.relatedTarget === null) elements.app.classList.remove("drop-active");
+        });
+        document.addEventListener("drop", async event => {
+          event.preventDefault();
+          elements.app.classList.remove("drop-active");
+          await addImageFiles(event.dataTransfer.files);
+        });
+
+        window.addEventListener("beforeunload", () => {
+          state.urls.forEach(url => URL.revokeObjectURL(url));
+        });
+      }
+
+      async function init() {
+        try {
+          state.db = await openDatabase();
+          state.records = sortRecords(await getAllRecords());
+          state.selectedId = state.records[0]?.imageId || null;
+          bindEvents();
+          renderGallery();
+          renderInspector();
+          refreshIcons();
+        } catch (error) {
+          console.error(error);
+          elements.inspector.innerHTML = `<div class="inspector-empty">浏览器本地数据库初始化失败</div>`;
+          showToast("无法初始化本地数据库");
+        }
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
