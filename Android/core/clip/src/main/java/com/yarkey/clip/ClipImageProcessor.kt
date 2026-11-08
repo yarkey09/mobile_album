@@ -16,18 +16,20 @@ internal class ClipImageProcessor(
     private val contentResolver: ContentResolver,
 ) {
     /**
-     * 将图片缩放到 224 x 224，把 RGB 通道转换为平面布局，并使用模型训练时的均值和标准差归一化。
+     * 将图片按中心裁成正方形后缩放到 224 x 224，把 RGB 通道转换为平面布局，
+     * 并使用模型训练时的均值和标准差归一化。
      */
     fun preprocess(uri: String): FloatArray {
         val source = decodeSampledBitmap(Uri.parse(uri))
+        val crop = centerCropBounds(source.width, source.height)
         val resized = Bitmap.createBitmap(IMAGE_SIZE, IMAGE_SIZE, Bitmap.Config.ARGB_8888)
         Canvas(resized).drawBitmap(
             source,
-            Rect(0, 0, source.width, source.height),
+            Rect(crop.left, crop.top, crop.right, crop.bottom),
             Rect(0, 0, IMAGE_SIZE, IMAGE_SIZE),
             Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG),
         )
-        if (source !== resized) source.recycle()
+        source.recycle()
 
         return try {
             // 从 Bitmap 中提取所有像素，每个像素为 ARGB 打包的 32 位 Int
@@ -95,6 +97,19 @@ internal class ClipImageProcessor(
         const val IMAGE_SIZE = 224
         const val CHANNELS = 3
 
+        internal fun centerCropBounds(width: Int, height: Int): CenterCropBounds {
+            require(width > 0 && height > 0) { "Image dimensions must be positive" }
+            val side = minOf(width, height)
+            val left = (width - side) / 2
+            val top = (height - side) / 2
+            return CenterCropBounds(
+                left = left,
+                top = top,
+                right = left + side,
+                bottom = top + side,
+            )
+        }
+
         // MEAN = 均值（Mean）
         // STD = 标准差（Standard Deviation）
         // 这组具体数值来自 Chinese-CLIP（及原始 OpenAI CLIP）RN50 模型的训练预处理配置，
@@ -107,6 +122,13 @@ internal class ClipImageProcessor(
         private const val BLUE_STD = 0.27577711f
     }
 }
+
+internal data class CenterCropBounds(
+    val left: Int,
+    val top: Int,
+    val right: Int,
+    val bottom: Int,
+)
 
 /**
  * ## 均值 / 标准差 概念
