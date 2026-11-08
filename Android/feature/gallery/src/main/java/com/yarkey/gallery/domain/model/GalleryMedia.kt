@@ -5,6 +5,8 @@ data class GalleryMedia(
     val uri: String,
     val displayName: String,
     val dateAddedMillis: Long,
+    val dateModifiedMillis: Long,
+    val sizeBytes: Long,
     val width: Int,
     val height: Int,
     val durationMillis: Long,

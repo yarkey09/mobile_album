@@ -34,14 +34,27 @@ data class ClipSearchResult(
 data class ClipImage(
     val id: String,
     val uri: String,
+    val fingerprint: String,
+)
+
+data class ClipIndexResult(
+    val indexedCount: Int,
+    val cacheHitCount: Int,
+    val generatedCount: Int,
 )
 
 /**
- * 构建内存图片向量索引，并根据文本查询计算相似度排序。
+ * 构建持久化图片向量索引，并根据文本查询计算相似度排序。
  *
- * 模型推理在主线程之外执行，索引只在当前引擎实例的生命周期内有效。
+ * 内存索引用于快速搜索，数据库索引用于跨进程复用图片向量。
  */
 interface ClipSearchEngine : AutoCloseable {
+    val availableModels: List<ClipModel>
+    val selectedModelId: String
+
+    /** 切换模型。调用方应在切换后使用当前图片快照重新装载对应索引。 */
+    suspend fun selectModel(modelId: String)
+
     /**
      * 重建并替换当前图片索引。
      *
@@ -50,7 +63,7 @@ interface ClipSearchEngine : AutoCloseable {
     suspend fun index(
         images: List<ClipImage>,
         onProgress: (completed: Int, total: Int) -> Unit,
-    ): Int
+    ): ClipIndexResult
 
     /** 最多返回 [limit] 条结果，并按相似度从高到低排序。 */
     suspend fun search(query: String, limit: Int = 30): List<ClipSearchResult>
@@ -69,6 +82,21 @@ class ChineseClipSearchEngine(
 ) : ClipSearchEngine {
     private val applicationContext = context.applicationContext
     private val environment = OrtEnvironment.getEnvironment()
+    private val embeddingDatabase = ClipEmbeddingDatabase(applicationContext)
+    private val preferences = applicationContext.getSharedPreferences(
+        PREFERENCES_NAME,
+        Context.MODE_PRIVATE,
+    )
+    @Volatile
+    private var selectedModel = ClipModelCatalog.definition(
+        preferences.getString(KEY_SELECTED_MODEL_ID, null).orEmpty()
+    ) ?: ClipModelCatalog.definitions.first()
+
+    override val availableModels: List<ClipModel> =
+        ClipModelCatalog.definitions.map(ClipModelDefinition::model)
+    override val selectedModelId: String
+        get() = selectedModel.model.id
+
     private val tokenizer by lazy {
         ChineseClipTokenizer.fromAssets(applicationContext.assets)
     }
@@ -78,37 +106,86 @@ class ChineseClipSearchEngine(
     @Volatile
     private var indexedImages: List<IndexedImage> = emptyList()
 
+    override suspend fun selectModel(modelId: String) = withContext(Dispatchers.IO) {
+        val model = requireNotNull(ClipModelCatalog.definition(modelId)) {
+            "Unknown CLIP model: $modelId"
+        }
+        if (selectedModel.model.id == modelId) return@withContext
+        selectedModel = model
+        indexedImages = emptyList()
+        preferences.edit().putString(KEY_SELECTED_MODEL_ID, modelId).apply()
+    }
+
     /**
-     * 使用同一个图片模型会话顺序编码图片，并在全部处理结束后一次性发布新索引。
+     * 优先复用数据库中的同模型、同图片版本向量，仅为缓存未命中的图片执行推理。
      */
     override suspend fun index(
         images: List<ClipImage>,
         onProgress: (completed: Int, total: Int) -> Unit,
     ) = withContext(Dispatchers.IO) {
         val startedAt = System.currentTimeMillis()
+        val model = selectedModel
+        val cached = embeddingDatabase.load(model.model.id)
         val features = ArrayList<IndexedImage>(images.size)
-        createSession(IMAGE_MODEL_ASSET).use { session ->
-            images.forEachIndexed { index, image ->
-                coroutineContext.ensureActive()
-                runCatching {
-                    val input = imageProcessor.preprocess(image.uri)
-                    features += IndexedImage(image.id, encodeImage(session, input))
-                }.onFailure { error ->
-                    Log.w(TAG, "Skipping image ${image.uri}", error)
-                }
-                onProgress(index + 1, images.size)
+        val updates = ArrayList<StoredEmbedding>()
+        var cacheHitCount = 0
+        val uncachedImages = images.filter { image ->
+            val cachedEmbedding = cached[image.id]
+            if (cachedEmbedding?.fingerprint == image.fingerprint) {
+                features += IndexedImage(image.id, cachedEmbedding.feature)
+                cacheHitCount++
+                false
+            } else {
+                true
             }
         }
-        indexedImages = features
+        var completed = cacheHitCount
+        onProgress(completed, images.size)
+
+        if (uncachedImages.isNotEmpty()) {
+            createSession(model.imageModelAsset, model.model.id).use { session ->
+                uncachedImages.forEach { image ->
+                    coroutineContext.ensureActive()
+                    runCatching {
+                        val input = imageProcessor.preprocess(image.uri)
+                        val feature = encodeImage(
+                            session = session,
+                            input = input,
+                            inputName = model.imageInputName,
+                        )
+                        features += IndexedImage(image.id, feature)
+                        updates += StoredEmbedding(image.id, image.fingerprint, feature)
+                    }.onFailure { error ->
+                        Log.w(TAG, "Skipping image ${image.uri}", error)
+                    }
+                    completed++
+                    onProgress(completed, images.size)
+                }
+            }
+        }
+        embeddingDatabase.synchronize(
+            modelId = model.model.id,
+            currentImageIds = images.mapTo(HashSet(), ClipImage::id),
+            updates = updates,
+        )
+        coroutineContext.ensureActive()
+        if (selectedModel.model.id == model.model.id) {
+            indexedImages = features
+        }
         Log.i(
             TAG,
-            "Image index ready: ${features.size}/${images.size} images in " +
+            "Image index ready: model=${model.model.id}, ${features.size}/${images.size} images, " +
+                "cacheHits=$cacheHitCount, generated=${updates.size}, in " +
                 "${System.currentTimeMillis() - startedAt} ms",
         )
         check(features.isNotEmpty() || images.isEmpty()) {
             "No gallery images could be encoded"
         }
-        features.size
+        ClipIndexResult(
+            indexedCount = features.size,
+            cacheHitCount = cacheHitCount,
+            generatedCount = updates.size,
+        )
     }
 
     /** 编码一次文本查询，遍历全部图片向量计算分数，并优先返回高分结果。 */
@@ -120,8 +197,9 @@ class ChineseClipSearchEngine(
         if (images.isEmpty()) return@withContext emptyList()
 
         val startedAt = System.currentTimeMillis()
-        val textFeature = createSession(TEXT_MODEL_ASSET).use { session ->
-            encodeText(session, tokenizer.encode(query))
+        val model = selectedModel
+        val textFeature = createSession(model.textModelAsset, model.model.id).use { session ->
+            encodeText(session, tokenizer.encode(query), model.textInputName)
         }
         images.asSequence()
             .map { indexed ->
@@ -139,7 +217,11 @@ class ChineseClipSearchEngine(
             }
     }
 
-    private fun encodeImage(session: OrtSession, input: FloatArray): FloatArray {
+    private fun encodeImage(
+        session: OrtSession,
+        input: FloatArray,
+        inputName: String,
+    ): FloatArray {
         OnnxTensor.createTensor(
             environment,
             FloatBuffer.wrap(input),
@@ -150,19 +232,23 @@ class ChineseClipSearchEngine(
                 ClipImageProcessor.IMAGE_SIZE.toLong(),
             ),
         ).use { tensor ->
-            session.run(mapOf(IMAGE_INPUT_NAME to tensor)).use { result ->
+            session.run(mapOf(inputName to tensor)).use { result ->
                 return normalizedOutput(result)
             }
         }
     }
 
-    private fun encodeText(session: OrtSession, input: LongArray): FloatArray {
+    private fun encodeText(
+        session: OrtSession,
+        input: LongArray,
+        inputName: String,
+    ): FloatArray {
         OnnxTensor.createTensor(
             environment,
             LongBuffer.wrap(input),
             longArrayOf(1, ChineseClipTokenizer.CONTEXT_LENGTH.toLong()),
         ).use { tensor ->
-            session.run(mapOf(TEXT_INPUT_NAME to tensor)).use { result ->
+            session.run(mapOf(inputName to tensor)).use { result ->
                 return normalizedOutput(result)
             }
         }
@@ -180,8 +266,8 @@ class ChineseClipSearchEngine(
         return FloatArray(output.size) { index -> output[index] / norm }
     }
 
-    private fun createSession(assetPath: String): OrtSession {
-        val model = materializeModel(assetPath)
+    private fun createSession(assetPath: String, modelId: String): OrtSession {
+        val model = materializeModel(assetPath, modelId)
         return OrtSession.SessionOptions().use { options ->
             options.setOptimizationLevel(OrtSession.SessionOptions.OptLevel.ALL_OPT)
             options.setIntraOpNumThreads(
@@ -196,8 +282,9 @@ class ChineseClipSearchEngine(
      *
      * 后续启动会比较文件大小，避免重复复制 147-148 MB 的模型。
      */
-    private fun materializeModel(assetPath: String): File {
-        val modelDirectory = File(applicationContext.filesDir, "clip-models").apply { mkdirs() }
+    private fun materializeModel(assetPath: String, modelId: String): File {
+        val modelDirectory = File(applicationContext.filesDir, "clip-models/$modelId")
+            .apply { mkdirs() }
         val target = File(modelDirectory, assetPath.substringAfterLast('/'))
         val assetLength = applicationContext.assets.open(assetPath).use {
             it.available().toLong()
@@ -219,6 +306,7 @@ class ChineseClipSearchEngine(
     }
 
     private fun dotProduct(first: FloatArray, second: FloatArray): Float {
+        require(first.size == second.size) { "Embedding dimensions do not match" }
         var score = 0f
         for (index in first.indices) score += first[index] * second[index]
         return score
@@ -231,10 +319,13 @@ class ChineseClipSearchEngine(
 
     companion object {
         private const val TAG = "ChineseClip"
-        private const val IMAGE_MODEL_ASSET = "models/rn50.img.fp32.onnx"
-        private const val TEXT_MODEL_ASSET = "models/rn50.txt.fp32.onnx"
-        private const val IMAGE_INPUT_NAME = "image"
-        private const val TEXT_INPUT_NAME = "text"
         private const val MAX_INTRA_OP_THREADS = 4
+        private const val PREFERENCES_NAME = "clip-model-selection"
+        private const val KEY_SELECTED_MODEL_ID = "selected-model-id"
+    }
+
+    override fun close() {
+        indexedImages = emptyList()
+        embeddingDatabase.close()
     }
 }

@@ -21,6 +21,8 @@ class MediaStoreGalleryRepository(
             MediaStore.MediaColumns._ID,
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.DATE_ADDED,
+            MediaStore.MediaColumns.DATE_MODIFIED,
+            MediaStore.MediaColumns.SIZE,
             MediaStore.MediaColumns.WIDTH,
             MediaStore.MediaColumns.HEIGHT,
             MediaStore.MediaColumns.MIME_TYPE,
@@ -45,6 +47,10 @@ class MediaStoreGalleryRepository(
                 val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
                 val nameColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
                 val dateColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED)
+                val modifiedColumn = cursor.getColumnIndexOrThrow(
+                    MediaStore.MediaColumns.DATE_MODIFIED
+                )
+                val sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
                 val widthColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.WIDTH)
                 val heightColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.HEIGHT)
                 val mimeTypeColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE)
@@ -71,6 +77,8 @@ class MediaStoreGalleryRepository(
                             uri = ContentUris.withAppendedId(contentUri, id).toString(),
                             displayName = cursor.getString(nameColumn).orEmpty(),
                             dateAddedMillis = cursor.getLong(dateColumn) * 1_000L,
+                            dateModifiedMillis = cursor.getLong(modifiedColumn) * 1_000L,
+                            sizeBytes = cursor.getLong(sizeColumn),
                             width = cursor.getInt(widthColumn),
                             height = cursor.getInt(heightColumn),
                             durationMillis = cursor.getLong(durationColumn),

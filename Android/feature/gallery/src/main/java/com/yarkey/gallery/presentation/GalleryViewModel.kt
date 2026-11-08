@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.yarkey.clip.ClipImage
+import com.yarkey.clip.ClipIndexResult
 import com.yarkey.clip.ClipSearchEngine
 import com.yarkey.clip.ClipSearchResult
 import com.yarkey.gallery.domain.model.GalleryMedia
@@ -27,7 +28,12 @@ class GalleryViewModel(
     private val clipSearchEngine: ClipSearchEngine = EmptyClipSearchEngine,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(GalleryUiState())
+    private val _uiState = MutableStateFlow(
+        GalleryUiState(
+            availableModels = clipSearchEngine.availableModels,
+            selectedModelId = clipSearchEngine.selectedModelId,
+        )
+    )
     val uiState: StateFlow<GalleryUiState> = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
@@ -41,7 +47,11 @@ class GalleryViewModel(
             loadJob?.cancel()
             indexJob?.cancel()
             searchJob?.cancel()
-            _uiState.value = GalleryUiState(accessMode = GalleryAccessMode.NONE)
+            _uiState.value = GalleryUiState(
+                accessMode = GalleryAccessMode.NONE,
+                availableModels = clipSearchEngine.availableModels,
+                selectedModelId = clipSearchEngine.selectedModelId,
+            )
             return
         }
 
@@ -73,6 +83,7 @@ class GalleryViewModel(
                     clipModelState = ClipModelState.IDLE,
                     indexedImageCount = 0,
                     indexTargetCount = 0,
+                    cacheHitCount = 0,
                 )
             }
             runCatching { getGalleryMedia() }
@@ -179,59 +190,115 @@ class GalleryViewModel(
         }
     }
 
+    fun selectModel(modelId: String) {
+        val state = _uiState.value
+        if (modelId == state.selectedModelId ||
+            state.availableModels.none { it.id == modelId }
+        ) {
+            return
+        }
+
+        indexJob?.cancel()
+        searchJob?.cancel()
+        _uiState.update {
+            it.copy(
+                selectedModelId = modelId,
+                clipModelState = ClipModelState.PREPARING,
+                indexedImageCount = 0,
+                indexTargetCount = 0,
+                cacheHitCount = 0,
+                isSearchActive = false,
+                isSearching = false,
+                searchResults = emptyList(),
+                searchScores = emptyMap(),
+            )
+        }
+        indexJob = viewModelScope.launch {
+            try {
+                clipSearchEngine.selectModel(modelId)
+                buildImageIndex(_uiState.value.media)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
+                _uiState.update {
+                    it.copy(
+                        selectedModelId = clipSearchEngine.selectedModelId,
+                        clipModelState = ClipModelState.FAILED,
+                    )
+                }
+            }
+        }
+    }
+
     /**
      * 仅索引最近的图片。开始新的加载任务前会取消旧索引任务，防止过期 MediaStore 快照覆盖当前 UI 状态。
      */
     private fun startImageIndex(media: List<GalleryMedia>) {
         indexJob?.cancel()
-        val galleryImages = media
-            .asSequence()
-            .filter { it.type == GalleryMediaType.IMAGE }
-            .take(MAX_INDEXED_IMAGES)
-            .toList()
-        if (galleryImages.isEmpty()) {
-            _uiState.update {
-                it.copy(
-                    clipModelState = ClipModelState.READY,
-                    indexTargetCount = 0,
-                    indexedImageCount = 0,
-                )
-            }
-            return
-        }
-        val clipImages = galleryImages.map { image ->
-            ClipImage(id = image.uri, uri = image.uri)
-        }
-
         indexJob = viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    clipModelState = ClipModelState.PREPARING,
-                    indexTargetCount = clipImages.size,
-                    indexedImageCount = 0,
-                )
-            }
             try {
-                val indexedCount = clipSearchEngine.index(clipImages) { completed, total ->
-                    _uiState.update {
-                        it.copy(
-                            clipModelState = ClipModelState.INDEXING,
-                            indexedImageCount = completed,
-                            indexTargetCount = total,
-                        )
-                    }
-                }
-                _uiState.update {
-                    it.copy(
-                        clipModelState = ClipModelState.READY,
-                        indexedImageCount = indexedCount,
-                    )
-                }
+                buildImageIndex(media)
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (_: Throwable) {
                 _uiState.update { it.copy(clipModelState = ClipModelState.FAILED) }
             }
+        }
+    }
+
+    private suspend fun buildImageIndex(media: List<GalleryMedia>) {
+        val clipImages = media
+            .asSequence()
+            .filter { it.type == GalleryMediaType.IMAGE }
+            .take(MAX_INDEXED_IMAGES)
+            .map { image ->
+                ClipImage(
+                    id = image.uri,
+                    uri = image.uri,
+                    fingerprint = listOf(
+                        image.dateModifiedMillis,
+                        image.sizeBytes,
+                        image.width,
+                        image.height,
+                    ).joinToString(":"),
+                )
+            }
+            .toList()
+        if (clipImages.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    clipModelState = ClipModelState.READY,
+                    indexTargetCount = 0,
+                    indexedImageCount = 0,
+                    cacheHitCount = 0,
+                )
+            }
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                clipModelState = ClipModelState.PREPARING,
+                indexTargetCount = clipImages.size,
+                indexedImageCount = 0,
+                cacheHitCount = 0,
+            )
+        }
+        val result: ClipIndexResult = clipSearchEngine.index(clipImages) { completed, total ->
+            _uiState.update {
+                it.copy(
+                    clipModelState = ClipModelState.INDEXING,
+                    indexedImageCount = completed,
+                    indexTargetCount = total,
+                )
+            }
+        }
+        _uiState.update {
+            it.copy(
+                clipModelState = ClipModelState.READY,
+                indexedImageCount = result.indexedCount,
+                cacheHitCount = result.cacheHitCount,
+            )
         }
     }
 
@@ -256,12 +323,21 @@ class GalleryViewModel(
     }
 
     private object EmptyClipSearchEngine : ClipSearchEngine {
+        override val availableModels = emptyList<com.yarkey.clip.ClipModel>()
+        override val selectedModelId = ""
+
+        override suspend fun selectModel(modelId: String) = Unit
+
         override suspend fun index(
             images: List<ClipImage>,
             onProgress: (completed: Int, total: Int) -> Unit,
-        ): Int {
+        ): ClipIndexResult {
             onProgress(images.size, images.size)
-            return images.size
+            return ClipIndexResult(
+                indexedCount = images.size,
+                cacheHitCount = 0,
+                generatedCount = images.size,
+            )
         }
 
         override suspend fun search(

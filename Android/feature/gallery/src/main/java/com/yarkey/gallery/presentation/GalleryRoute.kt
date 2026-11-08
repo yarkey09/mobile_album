@@ -33,11 +33,15 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -46,7 +50,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -129,6 +135,7 @@ fun GalleryRoute(
         onSearchQueryChanged = viewModel::onSearchQueryChanged,
         onSearch = viewModel::search,
         onClearSearch = viewModel::clearSearch,
+        onModelSelected = viewModel::selectModel,
         onMediaClick = viewModel::selectMedia,
         onDismissPreview = viewModel::clearSelection,
         modifier = modifier,
@@ -144,6 +151,7 @@ internal fun GalleryScreen(
     onSearchQueryChanged: (String) -> Unit,
     onSearch: () -> Unit,
     onClearSearch: () -> Unit,
+    onModelSelected: (String) -> Unit,
     onMediaClick: (GalleryMedia) -> Unit,
     onDismissPreview: () -> Unit,
     modifier: Modifier = Modifier,
@@ -201,6 +209,7 @@ internal fun GalleryScreen(
                         onQueryChanged = onSearchQueryChanged,
                         onSearch = onSearch,
                         onClear = onClearSearch,
+                        onModelSelected = onModelSelected,
                     )
                 }
             }
@@ -275,12 +284,18 @@ private fun ClipSearchPanel(
     onQueryChanged: (String) -> Unit,
     onSearch: () -> Unit,
     onClear: () -> Unit,
+    onModelSelected: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
+        ModelSelector(
+            uiState = uiState,
+            onModelSelected = onModelSelected,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = uiState.searchQuery,
             onValueChange = onQueryChanged,
@@ -355,6 +370,60 @@ private fun ClipSearchPanel(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ModelSelector(
+    uiState: GalleryUiState,
+    onModelSelected: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedModel = uiState.availableModels.firstOrNull {
+        it.id == uiState.selectedModelId
+    }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+    ) {
+        OutlinedTextField(
+            value = selectedModel?.let { "${it.displayName} · ${it.description}" }.orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            singleLine = true,
+            label = { Text(stringResource(R.string.clip_model_label)) },
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .fillMaxWidth(),
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            uiState.availableModels.forEach { model ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(model.displayName)
+                            Text(
+                                text = model.description,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onModelSelected(model.id)
+                    },
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun clipStatusText(uiState: GalleryUiState): String = when (uiState.clipModelState) {
     ClipModelState.IDLE -> stringResource(R.string.clip_waiting)
@@ -366,6 +435,12 @@ private fun clipStatusText(uiState: GalleryUiState): String = when (uiState.clip
     )
     ClipModelState.READY -> if (uiState.isSearchActive) {
         stringResource(R.string.clip_results, uiState.searchResults.size)
+    } else if (uiState.cacheHitCount > 0) {
+        stringResource(
+            R.string.clip_ready_with_cache,
+            uiState.indexedImageCount,
+            uiState.cacheHitCount,
+        )
     } else {
         stringResource(R.string.clip_ready, uiState.indexedImageCount)
     }

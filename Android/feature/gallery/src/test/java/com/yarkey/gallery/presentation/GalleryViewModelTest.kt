@@ -1,6 +1,8 @@
 package com.yarkey.gallery.presentation
 
 import com.yarkey.clip.ClipImage
+import com.yarkey.clip.ClipIndexResult
+import com.yarkey.clip.ClipModel
 import com.yarkey.clip.ClipSearchEngine
 import com.yarkey.clip.ClipSearchResult
 import com.yarkey.gallery.domain.model.GalleryMedia
@@ -92,6 +94,25 @@ class GalleryViewModelTest {
         assertEquals("红色的猫", engine.lastQuery)
     }
 
+    @Test
+    fun selectingModelRebuildsIndexForCurrentImages() = runTest {
+        val image = testMedia(1, GalleryMediaType.IMAGE)
+        val engine = FakeClipSearchEngine()
+        val viewModel = viewModel(
+            repository = FakeGalleryRepository(listOf(image)),
+            clipSearchEngine = engine,
+        )
+        viewModel.onAccessModeChanged(GalleryAccessMode.FULL)
+        advanceUntilIdle()
+
+        viewModel.selectModel("model-b")
+        advanceUntilIdle()
+
+        assertEquals("model-b", viewModel.uiState.value.selectedModelId)
+        assertEquals(ClipModelState.READY, viewModel.uiState.value.clipModelState)
+        assertEquals(listOf("model-a", "model-b"), engine.indexedModelIds)
+    }
+
     private fun viewModel(
         repository: GalleryRepository,
         clipSearchEngine: ClipSearchEngine = FakeClipSearchEngine(),
@@ -102,6 +123,8 @@ class GalleryViewModelTest {
         uri = "content://media/$id",
         displayName = "media-$id",
         dateAddedMillis = id,
+        dateModifiedMillis = id,
+        sizeBytes = id * 100,
         width = 100,
         height = 100,
         durationMillis = if (type == GalleryMediaType.VIDEO) 5_000 else 0,
@@ -122,14 +145,25 @@ class GalleryViewModelTest {
     private class FakeClipSearchEngine(
         private val results: List<ClipSearchResult> = emptyList(),
     ) : ClipSearchEngine {
+        override val availableModels = listOf(
+            ClipModel("model-a", "Model A", "Test"),
+            ClipModel("model-b", "Model B", "Test"),
+        )
+        override var selectedModelId = "model-a"
         var lastQuery: String? = null
+        val indexedModelIds = mutableListOf<String>()
+
+        override suspend fun selectModel(modelId: String) {
+            selectedModelId = modelId
+        }
 
         override suspend fun index(
             images: List<ClipImage>,
             onProgress: (completed: Int, total: Int) -> Unit,
-        ): Int {
+        ): ClipIndexResult {
+            indexedModelIds += selectedModelId
             onProgress(images.size, images.size)
-            return images.size
+            return ClipIndexResult(images.size, 0, images.size)
         }
 
         override suspend fun search(query: String, limit: Int): List<ClipSearchResult> {
